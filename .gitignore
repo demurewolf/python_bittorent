@@ -1,3 +1,4 @@
 .vscode/
 src/old_client/
 /venv/
+__pycache__/
