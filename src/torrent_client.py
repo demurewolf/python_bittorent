@@ -10,6 +10,7 @@ from hashlib import sha1
 import bencodepy
 
 from tracker_manager import TrackerManager
+from connection_manager import ConnectionManager
 
 
 # Debugging tool
@@ -54,8 +55,9 @@ class TorrentClient():
         # Find available port on host
         self.port = 6881
 
+        # Collect subcomponents
         self.tracker = TrackerManager(url=raw_tf_data[ANNOUNCE].decode(), filesize=self.info['length'])
-
+        self.conn_manager = None
 
         super().__init__()
 
@@ -71,29 +73,31 @@ class TorrentClient():
         print("=======================================")
 
     def start_download(self):
-        """
-        Steps:
-        1) Read torrent file -- torrent-client
-            We need the tracker ip, piece hashes, and 
 
-        2) Contact the torrent tracker -- tracker-handler
-
-        3) Connect to peers -- connection-manager
-
-        4) Download pieces w/ bittorrent -- connection-manager & piece-manager
-
-        5) Assemble pieces to file -- torrent-client & piece-manager
-
-        """
-        
         # Announce to tracker
         tracker_resp = self.tracker.contact_tracker(self.info_hash, self.peer_id, self.port)
         print(tracker_resp)
 
-        # Tell tracker we're done downloading
+        peers = self.tracker.get_peers(tracker_resp['peers'])
+
+        if peers and len(peers) > 0:
+            self.conn_manager = ConnectionManager(peers=peers, info_hash=self.info_hash)
+
+            self.conn_manager.initiate_connections()
+
+        else:
+            print("Problem getting peers from tracker...")
+            print(tracker_resp)
+    
+    def stop_download(self):
+       # Tell tracker we're done downloading
         tracker_resp = self.tracker.contact_tracker(self.info_hash, self.peer_id, self.port, event="stopped")
         print(tracker_resp)
-    
+
+        # Terminate peer connections
+        if self.conn_manager:
+            self.conn_manager.terminate_connections()
+
 
 
 if __name__ == "__main__":
@@ -106,3 +110,4 @@ if __name__ == "__main__":
     client = TorrentClient(tf_name)
     
     client.start_download()
+    client.stop_download()
