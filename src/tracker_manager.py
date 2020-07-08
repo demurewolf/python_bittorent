@@ -61,12 +61,25 @@ class TrackerManager():
             for k in dec_resp:
                 ret_resp[k.decode()] = dec_resp[k]
 
+            if 'failure reason' in ret_resp.keys():
+                print("Tracker failure for: {}".format(ret_resp['failure reason'].decode()))
+                return None
+
             self.interval = ret_resp['interval']
             self._stats = {
                 'complete': ret_resp['complete'],
                 'incompete': ret_resp['incomplete']
             }
+            
+            try:
+                test_peer_id = ret_resp['peers'][0]['peer_id']
 
+                self._peers = ret_resp['peers']
+
+            except TypeError as err:
+                self._peers = self._parse_binary_peers(ret_resp['peers'])
+
+            print(self._peers)
             return ret_resp
 
     def timer_event(self):
@@ -86,7 +99,7 @@ class TrackerManager():
                 "port": peer_port
             })
 
-        self._peers = peers
+        return peers
 
     @property
     def peers(self):
