@@ -9,11 +9,13 @@ from bisect import insort
 from bittorrent_proxy import BitTorrentProxy
 
 class EventServer():
-    def __init__(self, addr, timeout=0.01):
+    def __init__(self, addr, peer_id, info_hash, timeout=0.01):
         self._readers = {}
         self._writers = {}
         self._timers = []
 
+        self._peer_id = peer_id
+        self._info_hash = info_hash
         self._timeout = timeout
         self._timer_id = 0
 
@@ -62,9 +64,9 @@ class EventServer():
         client_s, client_addr = self._sock.accept()
         client_s.setblocking(0)
 
-        echo = BitTorrentProxy(client_s, client_addr, self)
+        proxy = BitTorrentProxy(client_s, client_addr, self._peer_id, self._info_hash, self)
 
-        self._readers[client_s] = echo
+        self._readers[client_s] = proxy
 
     def write_event(self):
         """
