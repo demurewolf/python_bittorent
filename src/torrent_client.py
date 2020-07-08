@@ -1,49 +1,28 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 This file will start up the torrent client and begin the download as a cmd arg
 """
 
 import sys
-from hashlib import sha1
-
 import bencodepy
 
+from socket import gethostname
+
+from event_server import EventServer
+from meta_info import MetaInfo
 from tracker_manager import TrackerManager
 from connection_manager import ConnectionManager
 
-
 # Debugging tool
-import pdb; pdb.set_trace()
-
-"""
-Torrent file keys for decoding data
-"""
-ANNOUNCE = b'announce'
-CREATED_BY = b'created by'
-CREATION_DATE = b'creation date'
-ENCODING = b'encoding'
-INFO = b'info'
+# import pdb; pdb.set_trace()
 
 class TorrentClient():
     
     def __init__(self, tf_name):
-        # Torrent client initialization steps
-
-        raw_tf_data = bencodepy.decode_from_file(tf_name)
-        
-        self.print_metadata(raw_tf_data)
-
-        # Gather info data
-        self.info = {}
-        for k in raw_tf_data[INFO]:
-            self.info[k.decode()] = raw_tf_data[INFO][k]
-
-        # Calculate info hash
-        binfo = bencodepy.encode(self.info)
-        hasher = sha1()
-        hasher.update(binfo)
-        self.info_hash = hasher.digest()
+        self._port = 6881
+        self._event_server = EventServer((gethostname(), self._port))
+        self._meta_info = MetaInfo(tf_name)
 
         # Generate peer id
         from random import choices
@@ -52,46 +31,32 @@ class TorrentClient():
         rand_nums_str = ''.join([str(x) for x in rand_nums])
         self.peer_id = base_peer_id + rand_nums_str
 
-        # Find available port on host
-        self.port = 6881
-
         # Collect subcomponents
-        self.tracker = TrackerManager(url=raw_tf_data[ANNOUNCE].decode(), filesize=self.info['length'])
+        self.tracker = TrackerManager(url=self._meta_info.announce, filesize=self._meta_info.info['length'])
         self.conn_manager = None
 
         super().__init__()
 
-    def print_metadata(self, data):
-        print("======== TORRENT FILE METADATA ========")
-        print(f"ANNOUNCE URL - {data[ANNOUNCE].decode()}")
-        print(f"CREATED BY - {data[CREATED_BY].decode()}")
-        print(f"ENCODING - {data[ENCODING].decode()}")
-
-        from datetime import datetime
-        timestamp = datetime.fromtimestamp(data[CREATION_DATE])
-        print(f"CREATION DATE - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=======================================")
-
     def start_download(self):
 
         # Announce to tracker
-        tracker_resp = self.tracker.contact_tracker(self.info_hash, self.peer_id, self.port)
+        tracker_resp = self.tracker.contact_tracker(self._meta_info.info_hash, self.peer_id, self._port)
         print(tracker_resp)
 
         peers = self.tracker.get_peers(tracker_resp['peers'])
 
         if peers and len(peers) > 0:
-            self.conn_manager = ConnectionManager(peers=peers, info_hash=self.info_hash)
+            # self.conn_manager = ConnectionManager(peers=peers, info_hash=self.info_hash)
 
-            self.conn_manager.initiate_connections()
-
+            # self.conn_manager.initiate_connections()
+            pass
         else:
             print("Problem getting peers from tracker...")
             print(tracker_resp)
     
     def stop_download(self):
        # Tell tracker we're done downloading
-        tracker_resp = self.tracker.contact_tracker(self.info_hash, self.peer_id, self.port, event="stopped")
+        tracker_resp = self.tracker.contact_tracker(self._meta_info.info_hash, self.peer_id, self._port, event="stopped")
         print(tracker_resp)
 
         # Terminate peer connections
