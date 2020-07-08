@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import socket
 import select
@@ -22,8 +22,9 @@ class EventServer():
         server.bind(addr)
         server.listen(5)
 
-        self._readers[server] = self
         self._sock = server
+        self._port = addr[1]
+        self._readers[server] = self
 
     def register_for_read_events(self, sock, proxy):
         if sock not in self._readers:
@@ -50,6 +51,10 @@ class EventServer():
         self._timers = [(timeout, proxy, t_id)
                         for (timeout, proxy, t_id) in self._timers
                         if t_id != timer_id]
+
+    @property
+    def port(self):
+        return self._port
 
     def read_event(self):
         # Accept connection

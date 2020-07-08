@@ -21,7 +21,7 @@ class TorrentClient():
     
     def __init__(self, tf_name):
         self._port = 6881
-        self._event_server = EventServer((gethostname(), self._port))
+        self._server = EventServer((gethostname(), self._port))
         self._meta_info = MetaInfo(tf_name)
 
         # Generate peer id
@@ -29,21 +29,17 @@ class TorrentClient():
         base_peer_id = "-JRW0010-"
         rand_nums = choices(range(10), k=(20 - len(base_peer_id)))
         rand_nums_str = ''.join([str(x) for x in rand_nums])
-        self.peer_id = base_peer_id + rand_nums_str
+        self._peer_id = base_peer_id + rand_nums_str
 
         # Collect subcomponents
-        self.tracker = TrackerManager(url=self._meta_info.announce, filesize=self._meta_info.info['length'])
-        self.conn_manager = None
+        self._tracker_manager = TrackerManager(self._meta_info, self._peer_id, self._server)
+        self._conn_manager = None
 
         super().__init__()
 
     def start_download(self):
 
-        # Announce to tracker
-        tracker_resp = self.tracker.contact_tracker(self._meta_info.info_hash, self.peer_id, self._port)
-        print(tracker_resp)
-
-        peers = self.tracker.get_peers(tracker_resp['peers'])
+        peers = self._tracker_manager.peers
 
         if peers and len(peers) > 0:
             # self.conn_manager = ConnectionManager(peers=peers, info_hash=self.info_hash)
@@ -52,16 +48,16 @@ class TorrentClient():
             pass
         else:
             print("Problem getting peers from tracker...")
-            print(tracker_resp)
+            
     
     def stop_download(self):
        # Tell tracker we're done downloading
-        tracker_resp = self.tracker.contact_tracker(self._meta_info.info_hash, self.peer_id, self._port, event="stopped")
+        tracker_resp = self._tracker_manager.contact_tracker(event="stopped")
         print(tracker_resp)
 
         # Terminate peer connections
-        if self.conn_manager:
-            self.conn_manager.terminate_connections()
+        if self._conn_manager:
+            self._conn_manager.terminate_connections()
 
 
 

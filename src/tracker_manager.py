@@ -1,7 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import requests
 import bencodepy
+
+from meta_info import MetaInfo
 
 DEFAULT_INTERVAL = 120
 
@@ -11,34 +13,42 @@ class TrackerManager():
     Maintains communication with the torrent tracker
     """
 
-    def __init__(self, url, filesize):
+    def __init__(self, meta_info: MetaInfo, peer_id, event_server):
         
-        self.url = url
-        self.left = filesize
+        self._meta_info = meta_info
+        self._peer_id = peer_id
+        self._server = event_server
 
-        self.uploaded = 0
-        self.downloaded = 0
-        self.interval = DEFAULT_INTERVAL
+        self._left = meta_info.info['length']
 
-        self.stats = {}
+        self._uploaded = 0
+        self._downloaded = 0
+        self._interval = DEFAULT_INTERVAL
+
+        self._stats = {}
+        self._peers = []
+
+        print(self.contact_tracker())
 
         super().__init__()
 
-    def contact_tracker(self, info_hash, peer_id, port, event="started"):
+    def contact_tracker(self, event="started"):
+        url = self._meta_info.announce
+
         data = {
-            'info_hash': info_hash,
-            'peer_id': peer_id,
-            'port': port,
-            'uploaded': self.uploaded,
-            'downloaded': self.downloaded,
-            'left': self.left,
+            'info_hash': self._meta_info.info_hash,
+            'peer_id': self._peer_id,
+            'port': self._server.port,
+            'uploaded': self._uploaded,
+            'downloaded': self._downloaded,
+            'left': self._left,
             'event': event,
-            'compact': 1
+            'compact': 0
         }
 
         # Support for udp trackers in the future
-        if self.url.startswith("http"):
-            resp = requests.get(self.url, params=data)
+        if url.startswith("http"):
+            resp = requests.get(url, params=data)
         else:
             resp = None
 
@@ -52,15 +62,18 @@ class TrackerManager():
                 ret_resp[k.decode()] = dec_resp[k]
 
             self.interval = ret_resp['interval']
-            self.stats = {
+            self._stats = {
                 'complete': ret_resp['complete'],
                 'incompete': ret_resp['incomplete']
             }
 
             return ret_resp
+
+    def timer_event(self):
+        pass
     
     # Parses peers results based on either bencoded dictionary or compact form
-    def get_peers(self, raw_peers):
+    def _parse_binary_peers(self, raw_peers):
         peers = []
 
         # raw_peers is in compact form
@@ -69,8 +82,12 @@ class TrackerManager():
             peer_port = int.from_bytes(raw_peers[i+4:i+6], byteorder="big")
             peers.append({
                 "peer_id": f"peer-{i//6}",
-                "peer_ip": peer_ip,
-                "peer_port": peer_port
+                "ip": peer_ip,
+                "port": peer_port
             })
 
-        return peers
+        self._peers = peers
+
+    @property
+    def peers(self):
+        return self._peers
