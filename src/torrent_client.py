@@ -21,7 +21,6 @@ class TorrentClient():
     
     def __init__(self, tf_name):
         self._port = 6881
-        self._server = EventServer((gethostname(), self._port))
         self._meta_info = MetaInfo(tf_name)
 
         # Generate peer id
@@ -32,22 +31,14 @@ class TorrentClient():
         self._peer_id = base_peer_id + rand_nums_str
 
         # Collect subcomponents
+        self._server = EventServer((gethostname(), self._port), self._peer_id, self._meta_info.info_hash)
         self._tracker_manager = TrackerManager(self._meta_info, self._peer_id, self._server)
-        self._conn_manager = None
+        self._conn_manager = ConnectionManager(self._tracker_manager.peers, self._peer_id, self._meta_info.info_hash, self._server)
 
         super().__init__()
 
     def start_download(self):
-
-        peers = self._tracker_manager.peers
-
-        if peers and len(peers) > 0:
-            # self.conn_manager = ConnectionManager(peers=peers, info_hash=self.info_hash)
-
-            # self.conn_manager.initiate_connections()
-            pass
-        else:
-            print("Problem getting peers from tracker...")
+        self._conn_manager.initiate_connections()
             
     
     def stop_download(self):
