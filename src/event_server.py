@@ -3,13 +3,17 @@
 import socket
 import select
 import time
+import logging
 
 from bisect import insort
 
 from bittorrent_proxy import BitTorrentProxy
 
+MIN_PORT = 6881
+MAX_PORT = 6889
+
 class EventServer():
-    def __init__(self, addr, peer_id, info_hash, timeout=0.01):
+    def __init__(self, peer_id, info_hash, timeout=0.01):
         self._readers = {}
         self._writers = {}
         self._timers = []
@@ -21,11 +25,18 @@ class EventServer():
 
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setblocking(0)
-        server.bind(addr)
-        server.listen(5)
+
+        for p in range(MIN_PORT, MAX_PORT+1):
+            try:
+                logging.info("Binding to port {}".format(p))
+                addr = (socket.gethostname, p)
+                server.bind(addr)
+                server.listen(5)
+                self._port = p
+            except Exception as e:
+                logging.info("Encountered error:\n {}".format(str(e)))
 
         self._sock = server
-        self._port = addr[1]
         self._readers[server] = self
 
     def register_for_read_events(self, sock, proxy):
@@ -60,7 +71,7 @@ class EventServer():
 
     def read_event(self):
         # Accept connection
-        print("Read event on SelectServer")
+        logging.info("Read event on SelectServer")
         client_s, client_addr = self._sock.accept()
         client_s.setblocking(0)
 
@@ -75,7 +86,7 @@ class EventServer():
         pass
 
     def run(self):
-        print("Running SelectServer...")
+        logging.info("Running SelectServer...")
         while 1:
             
             # Check timers

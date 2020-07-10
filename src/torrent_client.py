@@ -34,7 +34,7 @@ class TorrentClient():
 
 
         # Collect subcomponents
-        self._server = EventServer((gethostname(), self._port), self._peer_id, self._meta_info.info_hash)
+        self._server = EventServer(self._peer_id, self._meta_info.info_hash)
         self._tracker_manager = TrackerManager(self._meta_info, self._peer_id, self._server)
         self._conn_manager = ConnectionManager(self._tracker_manager.peers, self._peer_id, self._meta_info.info_hash, self._server)
 
