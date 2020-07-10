@@ -2,6 +2,7 @@
 
 import requests
 import bencodepy
+import logging
 
 from meta_info import MetaInfo
 
@@ -32,8 +33,14 @@ class TrackerManager():
 
         super().__init__()
 
+    @property
+    def peers(self):
+        return self._peers
+
     def contact_tracker(self, event="started"):
         url = self._meta_info.announce
+        
+        logging.info("Contacting tracker at {}".format(url))
 
         data = {
             'info_hash': self._meta_info.info_hash,
@@ -61,8 +68,10 @@ class TrackerManager():
             for k in dec_resp:
                 ret_resp[k.decode()] = dec_resp[k]
 
+            logging.debug("Tracker response:\n{}".format(ret_resp))
+
             if 'failure reason' in ret_resp.keys():
-                print("Tracker failure for: {}".format(ret_resp['failure reason'].decode()))
+                logging.error("Tracker failure for: {}".format(ret_resp['failure reason'].decode()))
                 return None
 
             self.interval = ret_resp['interval']
@@ -76,17 +85,21 @@ class TrackerManager():
 
                 self._peers = ret_resp['peers']
 
-            except TypeError as err:
+            except TypeError:
                 self._peers = self._parse_binary_peers(ret_resp['peers'])
 
-            print(self._peers)
+            logging.info("Peers list: {}".format(self._peers))
+            
             return ret_resp
 
     def timer_event(self):
+        # TODO: Tracker manager should repeatedly ping tracker
         pass
     
     # Parses peers results based on either bencoded dictionary or compact form
     def _parse_binary_peers(self, raw_peers):
+        logging.info("Parsing binary peers response")
+
         peers = []
 
         # raw_peers is in compact form
@@ -100,7 +113,3 @@ class TrackerManager():
             })
 
         return peers
-
-    @property
-    def peers(self):
-        return self._peers
