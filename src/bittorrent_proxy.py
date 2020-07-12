@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
+import logging
 
 import bittorrent_messages
 
@@ -19,12 +20,25 @@ class BitTorrentProxy():
         self._server = server
 
         self._tosend = None
+        self._choked = True
+        self._interested = False
 
+        if sock is None:
+            logging.info("Initiating connection with {}".format(addr))
+
+        else:
+            logging.info("Connection request from {}".format(addr))
+
+        self._server.register_for_read_events(self._sock, self)
+            
+    
     @property
     def sock(self):
         return self._sock
 
     def read_event(self):
+        logging.debug("Received readable data from socket from {}".format(self._addr))
+
         data = self._sock.recv(1024)
 
         if data:
@@ -37,6 +51,8 @@ class BitTorrentProxy():
 
     def write_event(self):
         if self._tosend:
+            logging.debug("Sending data to {}".format(self._addr))
+            
             self._sock.sendall(self._tosend)
             self._tosend = None
 
