@@ -5,11 +5,7 @@ This file will start up the torrent client and begin the download as a cmd arg
 """
 
 import sys
-import bencodepy
-
 import logging
-
-from socket import gethostname
 
 from event_server import EventServer
 from meta_info import MetaInfo
