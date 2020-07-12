@@ -60,11 +60,11 @@ def port(port_num):
 
 def decode_message(buff):
     if len(buff) >= 4:
-        msg_len = unpack('!i', buff[0:4])
+        msg_len = unpack('!i', buff[0:4])[0]
 
         if msg_len > 0:
-            msg_type = unpack('b', buff[4])
-
+            msg_type = buff[4]
+            
             if msg_type >= HAVE:
                 param_switcher = {
                     HAVE: _sw_have,
@@ -74,8 +74,10 @@ def decode_message(buff):
                     CANCEL: _sw_cancel,
                     PORT: _sw_port
                 }
-
-                params = param_switcher.get(msg_type)(buff[5:])
+                
+                msg_data = buff[5:]
+                
+                params = param_switcher.get(msg_type)(msg_data)
 
                 return (msg_len, msg_type, params)
 
@@ -88,16 +90,18 @@ def decode_message(buff):
 
 def _sw_have(buff):
     return {
-        'piece_index': unpack('i', buff)
+        'piece_index': unpack('!i', buff)[0]
     }
 
 def _sw_bitfield(buff):
+    bf = bitarray()
+    bf.frombytes(buff)
     return {
-        'bitfield': bitarray(buff)
+        'bitfield': bf
     }
 
 def _sw_request(buff):
-    (p_i, b, l) = unpack('iii', buff)
+    (p_i, b, l) = unpack('!iii', buff)
     return {
         'piece_index': p_i,
         'begin': b,
@@ -105,7 +109,7 @@ def _sw_request(buff):
     }
 
 def _sw_piece(buff):
-    (p_i, b) = unpack('ii', buff[0:8])
+    (p_i, b) = unpack('!ii', buff[0:8])
     return {
         'piece_index': p_i,
         'begin': b,
@@ -113,7 +117,7 @@ def _sw_piece(buff):
     }
 
 def _sw_cancel(buff):
-    (p_i, b, l) = unpack('iii', buff)
+    (p_i, b, l) = unpack('!iii', buff)
     return {
         'piece_index': p_i,
         'begin': b,
@@ -122,5 +126,5 @@ def _sw_cancel(buff):
 
 def _sw_port(buff):
     return {
-        'port': unpack('i', buff)
+        'port': unpack('!i', buff)
     }
