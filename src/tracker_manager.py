@@ -29,8 +29,6 @@ class TrackerManager():
         self._stats = {}
         self._peers = []
 
-        print(self.contact_tracker())
-
         super().__init__()
 
     @property
