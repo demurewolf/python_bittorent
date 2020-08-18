@@ -29,12 +29,17 @@ class EventServer():
         for p in range(MIN_PORT, MAX_PORT+1):
             try:
                 logging.info("Binding to port {}".format(p))
-                addr = (socket.gethostname, p)
+                addr = (socket.gethostname(), p)
                 server.bind(addr)
                 server.listen(5)
                 self._port = p
+                break
             except Exception as e:
-                logging.info("Encountered error:\n {}".format(str(e)))
+                logging.error("Encountered error:\n {}".format(str(e)), exc_info=True)
+
+        if not self._port:
+            logging.exception("Cannot find open port on local machine")
+            raise Exception("Cannot find open port on local machine")
 
         self._sock = server
         self._readers[server] = self
