@@ -20,7 +20,7 @@ class MetaInfo():
 
         self._announce = raw_data[ANNOUNCE].decode()
         self._created_by = raw_data[CREATED_BY].decode()
-        self._encoding = raw_data[ENCODING].decode()
+        # self._encoding = raw_data[ENCODING].decode()
 
         from datetime import datetime
         timestamp = datetime.fromtimestamp(raw_data[CREATION_DATE])
@@ -40,7 +40,7 @@ class MetaInfo():
         print("======== TORRENT FILE METADATA ========")
         print(f"ANNOUNCE URL - {self._announce}")
         print(f"CREATED BY - {self._created_by}")
-        print(f"ENCODING - {self._encoding}")
+        # print(f"ENCODING - {self._encoding}")
         print(f"CREATION DATE - {self._creation_date}")
         print("=======================================")
 
